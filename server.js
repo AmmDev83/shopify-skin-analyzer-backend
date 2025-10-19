@@ -1,0 +1,87 @@
+/**
+ * Backend minimal para recibir imagen, llamar a Face++ y devolver skinType.
+ * - Configura variables de entorno FACEPP_KEY y FACEPP_SECRET.
+ * - Ejemplo de deploy: Render, Railway, Vercel Serverless, etc.
+ */
+
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const FormData = require("form-data");
+const fetch = require("node-fetch");
+const path = require("path");
+
+const app = express();
+const upload = multer({ dest: "uploads/" });
+
+// --- CORS simple para que el bloque en la tienda pueda llamar al backend
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*"); // En producción restringir dominio
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
+
+app.post("/analyze-skin", upload.single("photo"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No se subió imagen" });
+
+    const FACEPP_KEY = process.env.FACEPP_KEY;
+    const FACEPP_SECRET = process.env.FACEPP_SECRET;
+    if (!FACEPP_KEY || !FACEPP_SECRET) {
+      fs.unlinkSync(req.file.path);
+      return res.status(500).json({ error: "FACEPP_KEY / FACEPP_SECRET no configuradas" });
+    }
+
+    const form = new FormData();
+    form.append("api_key", FACEPP_KEY);
+    form.append("api_secret", FACEPP_SECRET);
+    form.append("image_file", fs.createReadStream(req.file.path));
+    form.append("return_attributes", "skinstatus");
+
+    const response = await fetch("https://api-us.faceplusplus.com/facepp/v3/detect", {
+      method: "POST",
+      body: form
+    });
+
+    const data = await response.json();
+    // borrar fichero temporal
+    try { fs.unlinkSync(req.file.path); } catch (_) {}
+
+    if (!data.faces || !data.faces.length || !data.faces[0].attributes || !data.faces[0].attributes.skinstatus) {
+      return res.status(400).json({ error: "No se detectó un rostro con datos de piel" });
+    }
+
+    const skin = data.faces[0].attributes.skinstatus;
+    // skin tiene propiedades: health, stain, acne, dark_circle, etc. (depende de Face++)
+    // Face++ devuelve algunos valores; usaremos 'oiliness' si existe o inferiremos de 'health'/'acne'.
+    // Ajusta umbrales según pruebas reales.
+    let skinType = "normal";
+
+    // Si hay oiliness -> usarlo
+    if (skin.oiliness !== undefined && skin.oiliness !== null) {
+      // Face++ returns float 0-100? Ajusta si es 0-1 según la API. Probamos con 0-100 normalizado:
+      const oil = Number(skin.oiliness);
+      if (oil >= 60) skinType = "grasa";
+      else if (oil <= 30) skinType = "seca";
+      else skinType = "mixta";
+    } else if (skin.acne !== undefined) {
+      const acne = Number(skin.acne);
+      if (acne >= 50) skinType = "grasa";
+    }
+
+    // Devuelve skinType y datos crudos para que puedas afinar
+    return res.json({ skinType, raw: skin });
+  } catch (err) {
+    console.error("ERROR analyze-skin:", err);
+    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) {}
+    return res.status(500).json({ error: "Error interno procesando la imagen" });
+  }
+});
+
+// Health check
+app.get("/", (req, res) => res.send("Skin Analyzer backend OK"));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));

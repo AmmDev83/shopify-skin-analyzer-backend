@@ -92,7 +92,7 @@ app.post("/subscribe-customer", async (req, res) => {
       {
         method: "POST",
         headers: {
-          "X-Shopify-Access-Token": "TU_TOKEN_PRIVADO",
+          "X-Shopify-Access-Token": "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",
           "Content-Type": "application/json"
         },
         body: JSON.stringify({

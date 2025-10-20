@@ -47,7 +47,7 @@ app.post("/analyze-skin", upload.single("photo"), async (req, res) => {
 
     const data = await response.json();
     // borrar fichero temporal
-    try { fs.unlinkSync(req.file.path); } catch (_) {}
+    try { fs.unlinkSync(req.file.path); } catch (_) { }
 
     if (!data.faces || !data.faces.length || !data.faces[0].attributes || !data.faces[0].attributes.skinstatus) {
       return res.status(400).json({ error: "No se detectó un rostro con datos de piel" });
@@ -75,13 +75,49 @@ app.post("/analyze-skin", upload.single("photo"), async (req, res) => {
     return res.json({ skinType, raw: skin });
   } catch (err) {
     console.error("ERROR analyze-skin:", err);
-    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) {}
+    if (req.file) try { fs.unlinkSync(req.file.path); } catch (_) { }
     return res.status(500).json({ error: "Error interno procesando la imagen" });
   }
 });
 
 // Health check
 app.get("/", (req, res) => res.send("Skin Analyzer backend OK"));
+
+app.post("/subscribe-customer", async (req, res) => {
+  const { email, firstName = "", lastName = "" } = req.body;
+
+  try {
+    const response = await fetch(
+      "https://mi-tienda-6454597.myshopify.com/admin/api/2025-10/customers.json",
+      {
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": "TU_TOKEN_PRIVADO",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          customer: {
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            accepts_marketing: true,
+            tags: "skin-analyzer"
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok) {
+      res.json({ success: true, customer: data.customer });
+    } else {
+      res.status(response.status).json({ success: false, error: data.errors });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Error interno" });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Backend corriendo en puerto ${PORT}`));

@@ -84,7 +84,11 @@ app.post("/analyze-skin", upload.single("photo"), async (req, res) => {
 app.get("/", (req, res) => res.send("Skin Analyzer backend OK"));
 
 app.post("/subscribe-customer", async (req, res) => {
-  const { email, firstName = "", lastName = "" } = req.body;
+  const { email, firstName = "", lastName = "", token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ success: false, error: "Falta el token" });
+  }
 
   try {
     const response = await fetch(
@@ -92,7 +96,7 @@ app.post("/subscribe-customer", async (req, res) => {
       {
         method: "POST",
         headers: {
-          "X-Shopify-Access-Token": "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",
+          "X-Shopify-Access-Token": token,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({

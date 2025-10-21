@@ -230,13 +230,34 @@ app.get('/auth', async (req, res) => {
     return res.redirect(authRoute);
 });
 
-// 🔵 Callback después del login
-app.get('/auth/callback', async (req, res) => {
-    await shopify.auth.callback({
-        rawRequest: req,
-        rawResponse: res,
-    });
-    res.redirect(`https://${req.query.shop}/admin/apps`);
+// RUTA DE CALLBACK DE SHOPIFY
+app.get("/auth/callback", async (req, res) => {
+    const { code, shop, state } = req.query;
+
+    if (!code || !shop) {
+        return res.status(400).send("Missing code or shop query parameters.");
+    }
+
+    try {
+        // Intercambiar code por access token
+        const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                client_id: process.env.SHOPIFY_API_KEY,
+                client_secret: process.env.SHOPIFY_API_SECRET,
+                code,
+            }),
+        });
+
+        const data = await response.json();
+        console.log("Access token recibido:", data.access_token);
+
+        res.send("App instalada correctamente. Token recibido. ✅");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error al intercambiar el token.");
+    }
 });
 
 // Ejemplo de API protegida

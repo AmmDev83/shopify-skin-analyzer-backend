@@ -1,13 +1,14 @@
 {
   "name": "skin-analyzer-backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "@shopify/shopify-api": "^12.0.0",
+    "@shopify/shopify-api": "^3.0.1",
     "@shopify/shopify-app-express": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",

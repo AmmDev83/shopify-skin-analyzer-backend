@@ -234,8 +234,8 @@
 import { execSync } from "child_process";
 import express from "express";
 import dotenv from "dotenv";
-import shopify from "./shopify.server.js";
-// import { authenticate, login } from "./shopify.server.js";
+// import shopify from "./shopify.server.js";
+import { authenticate, login } from "./shopify.server.js";
 
 dotenv.config();
 

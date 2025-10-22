@@ -52,6 +52,15 @@ const shopify = shopifyApp({
 
 export default shopify;
 
+// ✅ Exporta todo así:
+export const {
+  authenticate,        // Para proteger rutas y login
+  login,               // Para iniciar OAuth (opcional, según versión)
+  registerWebhooks,
+  sessionStorage,
+  addDocumentResponseHeaders
+} = shopify;
+
 // export const {
 //   authenticate,
 //   login,

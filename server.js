@@ -231,12 +231,22 @@
 
 // app.listen(PORT);
 
+import { execSync } from "child_process";
 import express from "express";
 import dotenv from "dotenv";
 import shopify from "./shopify.server.js";
 // import { authenticate, login } from "./shopify.server.js";
 
 dotenv.config();
+
+try {
+    console.log("🛠 Generando Prisma Client dinámicamente...");
+    execSync("npx prisma generate", { stdio: "inherit" });
+    console.log("✅ Prisma Client generado");
+} catch (err) {
+    console.warn("⚠️ No se pudo generar Prisma Client automáticamente:", err.message);
+    console.log("Continuando de todas formas...");
+}
 
 const app = express();
 app.use(express.json());

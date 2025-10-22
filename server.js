@@ -235,7 +235,8 @@ import { execSync } from "child_process";
 import express from "express";
 import dotenv from "dotenv";
 // import shopify from "./shopify.server.js";
-import { authenticate, login } from "./shopify.server.js";
+// import { authenticate, login } from "./shopify.server.js";
+import shopify, { authenticate } from "./shopify.server.js";
 
 dotenv.config();
 
@@ -249,38 +250,68 @@ try {
 }
 
 const app = express();
+
+// Middleware de Shopify (proporcionado por shopifyApp)
+app.use(shopify.addDocumentResponseHeaders);
+
 app.use(express.json());
 
 app.get("/", (req, res) => res.send("Skin Analyzer Backend running ✅"));
 
+// Endpoint de inicio OAuth
 app.get("/auth", async (req, res) => {
     const { shop } = req.query;
     if (!shop) return res.status(400).send("Missing shop parameter");
 
     try {
-        // Usa authenticate.login para iniciar OAuth
-        const redirectUrl = await authenticate.login(req, res, {
-            shop,
-            callbackPath: "/auth/callback",
-            isOnline: true,
-        });
-        res.redirect(redirectUrl);
+        // Redirige automáticamente a Shopify usando la función login del middleware
+        res.redirect(`${process.env.SHOPIFY_APP_URL}/auth/${shop}`);
     } catch (err) {
         console.error("❌ Error iniciando OAuth:", err);
         res.status(500).send("Error iniciando OAuth");
     }
 });
 
-app.get("/auth/callback", async (req, res) => {
+// Callback de OAuth
+app.get("/auth/callback", authenticate.admin, async (req, res) => {
     try {
-        const session = await authenticate.validateAuthCallback(req, res, req.query);
+        const session = req.session;
         console.log("Token recibido:", session.accessToken);
         res.send("App instalada correctamente. Token recibido ✅");
-    } catch (error) {
-        console.error("Error OAuth:", error);
+    } catch (err) {
+        console.error("Error OAuth callback:", err);
         res.status(500).send("Error al autenticar la tienda.");
     }
 });
+
+// app.get("/auth", async (req, res) => {
+//     const { shop } = req.query;
+//     if (!shop) return res.status(400).send("Missing shop parameter");
+
+//     try {
+//         // Usa authenticate.login para iniciar OAuth
+//         const redirectUrl = await authenticate.login(req, res, {
+//             shop,
+//             callbackPath: "/auth/callback",
+//             isOnline: true,
+//         });
+//         res.redirect(redirectUrl);
+//     } catch (err) {
+//         console.error("❌ Error iniciando OAuth:", err);
+//         res.status(500).send("Error iniciando OAuth");
+//     }
+// });
+
+// app.get("/auth/callback", async (req, res) => {
+//     try {
+//         const session = await authenticate.validateAuthCallback(req, res, req.query);
+//         console.log("Token recibido:", session.accessToken);
+//         res.send("App instalada correctamente. Token recibido ✅");
+//     } catch (error) {
+//         console.error("Error OAuth:", error);
+//         res.status(500).send("Error al autenticar la tienda.");
+//     }
+// });
 
 // /**
 //  * 👉 1. Inicia el flujo OAuth

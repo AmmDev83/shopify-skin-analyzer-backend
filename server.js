@@ -253,52 +253,81 @@ app.use(express.json());
 
 app.get("/", (req, res) => res.send("Skin Analyzer Backend running ✅"));
 
-/**
- * 👉 1. Inicia el flujo OAuth
- */
 app.get("/auth", async (req, res) => {
+    const { shop } = req.query;
+    if (!shop) return res.status(400).send("Missing shop parameter");
+
     try {
-        // ✅ El nuevo SDK usa shopify.auth.begin()
-        const redirectUrl = await shopify.auth.begin({
-            shop: req.query.shop,
+        // Usa authenticate.login para iniciar OAuth
+        const redirectUrl = await authenticate.login(req, res, {
+            shop,
             callbackPath: "/auth/callback",
             isOnline: true,
-            rawRequest: req,
-            rawResponse: res,
         });
-
         res.redirect(redirectUrl);
-    } catch (error) {
-        console.error("❌ Error iniciando OAuth:", error);
-        res.status(500).send("Error iniciando OAuth con Shopify.");
+    } catch (err) {
+        console.error("❌ Error iniciando OAuth:", err);
+        res.status(500).send("Error iniciando OAuth");
     }
 });
 
-/**
- * 👉 2. Callback OAuth
- */
 app.get("/auth/callback", async (req, res) => {
     try {
-        const session = await shopify.auth.callback({
-            rawRequest: req,
-            rawResponse: res,
-        });
-
-        console.log("✅ Token recibido:", session.accessToken);
-
-        // Si quieres redirigir al front embebido:
-        const redirectUrl = await shopify.auth.callbackRedirect({
-            rawRequest: req,
-            rawResponse: res,
-            session,
-        });
-
-        res.redirect(redirectUrl);
+        const session = await authenticate.validateAuthCallback(req, res, req.query);
+        console.log("Token recibido:", session.accessToken);
+        res.send("App instalada correctamente. Token recibido ✅");
     } catch (error) {
-        console.error("❌ Error en /auth/callback:", error);
-        res.status(500).send("Error autenticando tienda.");
+        console.error("Error OAuth:", error);
+        res.status(500).send("Error al autenticar la tienda.");
     }
 });
+
+// /**
+//  * 👉 1. Inicia el flujo OAuth
+//  */
+// app.get("/auth", async (req, res) => {
+//     try {
+//         // ✅ El nuevo SDK usa shopify.auth.begin()
+//         const redirectUrl = await shopify.auth.begin({
+//             shop: req.query.shop,
+//             callbackPath: "/auth/callback",
+//             isOnline: true,
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+
+//         res.redirect(redirectUrl);
+//     } catch (error) {
+//         console.error("❌ Error iniciando OAuth:", error);
+//         res.status(500).send("Error iniciando OAuth con Shopify.");
+//     }
+// });
+
+// /**
+//  * 👉 2. Callback OAuth
+//  */
+// app.get("/auth/callback", async (req, res) => {
+//     try {
+//         const session = await shopify.auth.callback({
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+
+//         console.log("✅ Token recibido:", session.accessToken);
+
+//         // Si quieres redirigir al front embebido:
+//         const redirectUrl = await shopify.auth.callbackRedirect({
+//             rawRequest: req,
+//             rawResponse: res,
+//             session,
+//         });
+
+//         res.redirect(redirectUrl);
+//     } catch (error) {
+//         console.error("❌ Error en /auth/callback:", error);
+//         res.status(500).send("Error autenticando tienda.");
+//     }
+// });
 
 // /**
 //  * 👉 1. Inicia el flujo OAuth

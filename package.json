@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "generate": "prisma generate"
+    "build": "node generate-prisma.js"
   },
   "dependencies": {
     "@shopify/shopify-app-react-router": "^1.0.0",

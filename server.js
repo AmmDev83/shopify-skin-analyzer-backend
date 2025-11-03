@@ -264,6 +264,9 @@ app.get("/auth", async (req, res) => {
     if (!shop) return res.status(400).send("Missing shop parameter");
 
     try {
+        if (!process.env.SHOPIFY_APP_URL?.startsWith("https://")) {
+            console.error("❌ SHOPIFY_APP_URL no es válida:", process.env.SHOPIFY_APP_URL);
+        }
         // Redirige automáticamente a Shopify usando la función login del middleware
         res.redirect(`${process.env.SHOPIFY_APP_URL}/auth/${shop}`);
     } catch (err) {

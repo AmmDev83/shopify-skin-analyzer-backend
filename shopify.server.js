@@ -30,43 +30,55 @@
 // export const registerWebhooks = shopify.registerWebhooks;
 // export const sessionStorage = shopify.sessionStorage;
 
-import "@shopify/shopify-app-react-router/adapters/node";
-import {
-  shopifyApp,
-  ApiVersion,
-  AppDistribution,
-} from "@shopify/shopify-app-react-router/server";
-import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import prisma from "./db.server.js";
+// import "@shopify/shopify-app-react-router/adapters/node";
+// import {
+//   shopifyApp,
+//   ApiVersion,
+//   AppDistribution,
+// } from "@shopify/shopify-app-react-router/server";
+// import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+// import prisma from "./db.server.js";
 
-console.log("🧩 SHOPIFY_APP_URL:", process.env.SHOPIFY_APP_URL);
+// // 🧠 Detecta entorno y construye la URL correcta
+// const isRender = process.env.RENDER === "true" || process.env.RENDER_EXTERNAL_URL;
+// const localPort = process.env.PORT || 3000;
 
-if (!process.env.SHOPIFY_APP_URL?.startsWith("https://")) {
-  console.error("❌ SHOPIFY_APP_URL inválida:", process.env.SHOPIFY_APP_URL);
-  throw new Error("SHOPIFY_APP_URL debe comenzar con https://");
-}
+// // 🧩 Si estás en Render → usa la URL del servicio
+// // Si estás local → usa localhost o tu túnel de ngrok
+// let appUrl =
+//   process.env.SHOPIFY_APP_URL ||
+//   (isRender
+//     ? `https://${process.env.RENDER_EXTERNAL_URL}`
+//     : `https://localhost:${localPort}`);
 
-const shopify = shopifyApp({
-  apiKey: process.env.SHOPIFY_API_KEY,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  apiVersion: ApiVersion.October25,
-  scopes: process.env.SHOPIFY_SCOPES.split(","),
-  appUrl: process.env.SHOPIFY_APP_URL,
-  authPathPrefix: "/auth",
-  sessionStorage: new PrismaSessionStorage(prisma),
-  distribution: AppDistribution.AppStore,
-});
+// if (!appUrl.startsWith("https://")) {
+//   console.error("❌ SHOPIFY_APP_URL inválida o sin https://", appUrl);
+//   throw new Error("SHOPIFY_APP_URL debe comenzar con https://");
+// }
 
-export default shopify;
+// console.log("🧩 App corriendo en:", appUrl);
 
-// ✅ Exporta todo así:
-export const {
-  authenticate,        // Para proteger rutas y login
-  login,               // Para iniciar OAuth (opcional, según versión)
-  registerWebhooks,
-  sessionStorage,
-  addDocumentResponseHeaders
-} = shopify;
+// const shopify = shopifyApp({
+//   apiKey: process.env.SHOPIFY_API_KEY,
+//   apiSecretKey: process.env.SHOPIFY_API_SECRET,
+//   apiVersion: ApiVersion.October25,
+//   scopes: process.env.SHOPIFY_SCOPES.split(","),
+//   appUrl: process.env.SHOPIFY_APP_URL,
+//   authPathPrefix: "/auth",
+//   sessionStorage: new PrismaSessionStorage(prisma),
+//   distribution: AppDistribution.AppStore,
+// });
+
+// export default shopify;
+
+// // ✅ Exporta todo así:
+// export const {
+//   authenticate,        // Para proteger rutas y login
+//   login,               // Para iniciar OAuth (opcional, según versión)
+//   registerWebhooks,
+//   sessionStorage,
+//   addDocumentResponseHeaders
+// } = shopify;
 
 // export const {
 //   authenticate,
@@ -75,3 +87,79 @@ export const {
 //   sessionStorage,
 //   addDocumentResponseHeaders,
 // } = shopify;
+
+// import "@shopify/shopify-app-express/adapters/node";
+// import { shopifyApp } from "@shopify/shopify-app-express";
+// import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+// import { PrismaClient } from "@prisma/client";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// console.log("🧠 Cargando configuración Shopify...");
+
+// // 🧩 Inicializamos Prisma
+// const prisma = new PrismaClient();
+
+// // 🧩 Verifica variables críticas
+// if (!process.env.SHOPIFY_API_KEY || !process.env.SHOPIFY_API_SECRET || !process.env.SHOPIFY_APP_URL) {
+//   console.error("❌ Faltan variables de entorno necesarias para Shopify:");
+//   console.error({
+//     SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY,
+//     SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET,
+//     SHOPIFY_APP_URL: process.env.SHOPIFY_APP_URL,
+//   });
+//   throw new Error("Configuración incompleta de Shopify");
+// }
+
+// // 🧩 Configuración principal del SDK de Shopify
+// export const shopify = shopifyApp({
+//   api: {
+//     apiKey: process.env.SHOPIFY_API_KEY,
+//     apiSecretKey: process.env.SHOPIFY_API_SECRET,
+//     scopes: process.env.SHOPIFY_SCOPES || "read_products,write_products",
+//     hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
+//     apiVersion: "2025-01",
+//   },
+//   auth: {
+//     path: "/auth",
+//     callbackPath: "/auth/callback",
+//   },
+//   sessionStorage: new PrismaSessionStorage(prisma),
+//   distribution: "single-merchant", // puedes usar 'app-store' si es pública
+// });
+
+// export const authenticate = shopify.authenticate;
+
+// console.log("✅ Shopify configurado correctamente (modo backend listo)");
+
+import { shopifyApp } from "@shopify/shopify-app-express";
+import { ApiVersion  } from "@shopify/shopify-api";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+const shopify = shopifyApp({
+  api: {
+    apiKey: process.env.SHOPIFY_API_KEY,
+    apiSecretKey: process.env.SHOPIFY_API_SECRET,
+    scopes: process.env.SHOPIFY_SCOPES?.split(","),
+    apiVersion: ApiVersion.October25,
+  },
+  auth: {
+    path: "/auth",
+    callbackPath: "/auth/callback",
+  },
+  webhooks: {
+    path: "/webhooks",
+  },
+  sessionStorage: new PrismaSessionStorage(prisma),
+});
+
+export default shopify;
+export const { 
+  authenticate, 
+  billing, 
+  sessionStorage 
+} = shopify;

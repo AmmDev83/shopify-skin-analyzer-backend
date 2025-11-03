@@ -133,33 +133,132 @@
 
 // console.log("✅ Shopify configurado correctamente (modo backend listo)");
 
-import { shopifyApp } from "@shopify/shopify-app-express";
-import { ApiVersion  } from "@shopify/shopify-api";
-import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
-import { PrismaClient } from "@prisma/client";
+// import { shopifyApp } from "@shopify/shopify-app-express";
+// import { ApiVersion  } from "@shopify/shopify-api";
+// import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+// import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
+
+// const shopify = shopifyApp({
+//   api: {
+//     apiKey: process.env.SHOPIFY_API_KEY,
+//     apiSecretKey: process.env.SHOPIFY_API_SECRET,
+//     scopes: process.env.SHOPIFY_SCOPES?.split(","),
+//     apiVersion: ApiVersion.October25,
+//   },
+//   auth: {
+//     path: "/auth",
+//     callbackPath: "/auth/callback",
+//   },
+//   webhooks: {
+//     path: "/webhooks",
+//   },
+//   sessionStorage: new PrismaSessionStorage(prisma),
+// });
+
+// export default shopify;
+// export const { 
+//   authenticate, 
+//   billing, 
+//   sessionStorage 
+// } = shopify;
+
+// shopify.server.js
+// import "@shopify/shopify-app-express/adapters/node";
+// import { shopifyApp } from "@shopify/shopify-app-express";
+// import { ApiVersion } from "@shopify/shopify-api";
+// import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+// import prisma from "./db.server.js";
+
+// const shopify = shopifyApp({
+//   api: {
+//     apiKey: process.env.SHOPIFY_API_KEY,
+//     apiSecretKey: process.env.SHOPIFY_API_SECRET,
+//     apiVersion:  ApiVersion.October25,
+//     scopes: process.env.SHOPIFY_SCOPES.split(","),
+//   },
+//   auth: {
+//     path: "/auth",
+//     callbackPath: "/auth/callback",
+//   },
+//   webhooks: {
+//     path: "/webhooks",
+//   },
+//   sessionStorage: new PrismaSessionStorage(prisma),
+// });
+
+// export default shopify;
+
+// import { shopifyApp } from "@shopify/shopify-app-express";
+// import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+// import prisma from "./db.server.js";
+
+// const shopify = shopifyApp({
+//   apiKey: process.env.SHOPIFY_API_KEY,
+//   apiSecretKey: process.env.SHOPIFY_API_SECRET,
+//   apiVersion: "2025-01",
+//   scopes: process.env.SHOPIFY_SCOPES?.split(","),
+//   appUrl: process.env.SHOPIFY_APP_URL,
+//   sessionStorage: new PrismaSessionStorage(prisma),
+//   authPathPrefix: "/auth",
+// });
+
+// export const {
+//   authenticate,
+//   registerWebhooks,
+//   addDocumentResponseHeaders,
+//   sessionStorage,
+// } = shopify;
+
+// export default shopify;
+
+// backend/shopify.server.js
+import { shopifyApp } from "@shopify/shopify-app-express";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
+import prisma from "./db.server.js";
+
+// --- 🔍 DEBUG ENVIRONMENT ---
+console.log("🧠 DEBUG ENVIRONMENT SHOPIFY CONFIG:");
+console.log({
+  SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY,
+  SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET,
+  SHOPIFY_APP_URL: process.env.SHOPIFY_APP_URL,
+  SHOPIFY_SCOPES: process.env.SHOPIFY_SCOPES,
+});
+
+if (
+  !process.env.SHOPIFY_API_KEY ||
+  !process.env.SHOPIFY_API_SECRET ||
+  !process.env.SHOPIFY_APP_URL
+) {
+  console.error("❌ ERROR: Faltan variables de entorno Shopify. Deteniendo servidor.");
+  process.exit(1);
+}
 
 const shopify = shopifyApp({
   api: {
     apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES?.split(","),
-    apiVersion: ApiVersion.October25,
+    hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
+    apiVersion: "2025-01", // 👈 versión fija y válida
   },
   auth: {
     path: "/auth",
     callbackPath: "/auth/callback",
   },
-  webhooks: {
-    path: "/webhooks",
-  },
+  appUrl: process.env.SHOPIFY_APP_URL,
   sessionStorage: new PrismaSessionStorage(prisma),
 });
 
-export default shopify;
-export const { 
-  authenticate, 
-  billing, 
-  sessionStorage 
+export const {
+  authenticate,
+  addDocumentResponseHeaders,
+  registerWebhooks,
+  sessionStorage,
 } = shopify;
+
+console.log("✅ Shopify App inicializada correctamente");
+
+export default shopify;

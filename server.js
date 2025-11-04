@@ -499,15 +499,14 @@ app.get("/auth", shopify.auth.begin());
 // 🧩 Callback de OAuth
 app.get("/auth/callback", async (req, res) => {
     try {
-        const callbackResponse = await shopify.auth.callback({
+        const { session } = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        const session = callbackResponse.session;
         console.log("✅ App instalada correctamente. Token:", session.accessToken);
 
-        // 👉 Esto es lo importante:
+        // Redirige de vuelta al panel de Shopify
         const redirectUrl = await shopify.redirectToShopifyOrAppRoot({
             req,
             res,
@@ -520,6 +519,7 @@ app.get("/auth/callback", async (req, res) => {
         res.status(500).send("Error al autenticar la tienda");
     }
 });
+
 
 // app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
 //   const session = await shopify.sessionStorage.loadSession(req.query.shop);

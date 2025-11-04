@@ -630,6 +630,13 @@ const app = express();
 // ==========================
 app.set("trust proxy", 1); // importante para Render o proxies HTTPS
 app.use(cookieParser());
+
+// ✅ Habilitar cookies seguras
+app.use((req, res, next) => {
+    res.setHeader("Set-Cookie", "SameSite=None; Secure");
+    next();
+});
+
 app.use(express.json());
 
 // ==========================

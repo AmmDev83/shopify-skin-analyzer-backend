@@ -241,9 +241,8 @@ const shopify = shopifyApp({
     apiKey: process.env.SHOPIFY_API_KEY,
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES?.split(","),
-    hostName: new URL(process.env.SHOPIFY_APP_URL).host, // 👈 más robusto
+    hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
     apiVersion: "2025-10",
-    isEmbeddedApp: true, // 👈 muy importante
   },
   auth: {
     path: "/auth",
@@ -251,6 +250,11 @@ const shopify = shopifyApp({
   },
   appUrl: process.env.SHOPIFY_APP_URL,
   sessionStorage: new PrismaSessionStorage(prisma),
+  // 👇 Añade esta configuración
+  cookie: {
+    sameSite: "none",
+    secure: true,
+  },
 });
 
 export const {

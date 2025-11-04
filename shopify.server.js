@@ -242,7 +242,7 @@ const shopify = shopifyApp({
     apiSecretKey: process.env.SHOPIFY_API_SECRET,
     scopes: process.env.SHOPIFY_SCOPES?.split(","),
     hostName: process.env.SHOPIFY_APP_URL.replace(/^https?:\/\//, ""),
-    apiVersion: "2025-01", // 👈 versión fija y válida
+    apiVersion: "2025-10", // 👈 versión fija y válida
   },
   auth: {
     path: "/auth",

@@ -469,13 +469,6 @@ import dotenv from "dotenv";
 import { execSync } from "child_process";
 import shopify from "./shopify.server.js";
 
-
-// console.log("🔍 Shopify exports:", {
-//   shopify,
-//   authenticate: typeof authenticate,
-//   addDocumentResponseHeaders: typeof addDocumentResponseHeaders,
-// });
-
 dotenv.config();
 
 try {
@@ -487,11 +480,6 @@ try {
 }
 
 const app = express();
-app.use(express.json());
-
-// 👉 Shopify middleware (añade headers y autenticación)
-// app.use(shopify.addDocumentResponseHeaders);
-app.use(shopify.cspHeaders());
 
 // ==========================
 // 🧩 INICIO OAUTH
@@ -540,151 +528,34 @@ app.get("/auth", async (req, res) => {
 app.get("/auth/callback", async (req, res) => {
     try {
         console.log("📥 Recibiendo callback OAuth...");
-        const session = await shopify.auth.callback({
+        const { session } = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        if (!session || !session.accessToken) {
+        if (!session) {
             console.error("❌ No se recibió sesión válida en el callback");
             return res.status(401).send("No se recibió sesión válida de Shopify");
         }
 
         console.log("✅ OAuth completado para tienda:", session.shop);
-        console.log("🔑 Token de acceso:", session.accessToken.substring(0, 8) + "...");
+        console.log("🔑 Token de acceso:", session.accessToken?.substring(0, 8) + "...");
 
-        // Redirige al panel del merchant dentro de Shopify
+        // Redirigir al panel de la app embebida
         const redirectUrl = `https://${session.shop}/admin/apps/skin-analyzer`;
         console.log("🔁 Redirigiendo al panel de Shopify:", redirectUrl);
-        res.redirect(redirectUrl);
+        return res.redirect(redirectUrl);
     } catch (err) {
         console.error("❌ Error en OAuth callback:", err);
-        res.status(500).send("Error en OAuth callback");
+        return res.status(500).send("Error en OAuth callback");
     }
 });
 
-// app.get("/exitiframe", (req, res) => {
-//     const shop = req.query.shop;
-//     const redirectUrl = `/auth?shop=${shop}`;
-//     res.send(`
-//     <html>
-//       <body>
-//         <script type="text/javascript">
-//           window.top.location.href = "${redirectUrl}";
-//         </script>
-//       </body>
-//     </html>
-//   `);
-// });
 
-// 🧭 Redirección automática de OAuth
-// app.get("/auth", async (req, res) => {
-//     try {
-//         const { shop } = req.query;
-
-//         if (!shop) return res.status(400).send("Missing shop parameter");
-
-//         console.log("🟢 Iniciando OAuth para tienda:", shop);
-
-//         // 👇 Muy importante: return para que Express no continúe ejecutando
-//         return await shopify.auth.begin({
-//             shop,
-//             callbackPath: "/auth/callback",
-//             isOnline: false,
-//             rawRequest: req,
-//             rawResponse: res,
-//         });
-
-//     } catch (err) {
-//         console.error("❌ Error iniciando OAuth:", err);
-//         res.status(500).send("Error iniciando OAuth");
-//     }
-// });
-
-// app.get("/auth", async (req, res) => {
-//     try {
-//         const { shop } = req.query;
-//         console.log("🟢 Iniciando OAuth para tienda:", shop);
-
-//         if (!shop) {
-//             return res.status(400).send("Falta parámetro ?shop=");
-//         }
-
-//         // Si está dentro de iframe, redirigir fuera
-//         const isEmbedded = req.query.embedded === "1";
-//         if (isEmbedded) {
-//             return res.redirect(`/exitiframe?shop=${shop}`);
-//         }
-
-//         console.log("🔍 Parámetros recibidos:", {
-//             shop: req.query.shop,
-//             fullUrl: req.originalUrl,
-//         });
-
-//         console.log("➡️ Llamando a shopify.auth.begin()...");
-//         await shopify.auth.begin({
-//             shop,
-//             callbackPath: "/auth/callback",
-//             isOnline: false,
-//             rawRequest: req,
-//             rawResponse: res,
-//         });
-//         console.log("✅ shopify.auth.begin() terminó");
-
-//     } catch (error) {
-//         console.error("❌ Error iniciando OAuth:", error);
-//         res.status(500).send("Error iniciando OAuth");
-//     }
-// });
-
-
-
-// // 🧩 Callback de OAuth
-// app.get("/auth/callback", async (req, res) => {
-//     try {
-//         const session = await shopify.auth.callback({
-//             rawRequest: req,
-//             rawResponse: res,
-//         });
-
-//         console.log("✅ OAuth completo:", session.shop);
-
-//         // Redirige al frontend embebido dentro del admin
-//         res.redirect(`https://${session.shop}/admin/apps/skin-analyzer`);
-//     } catch (error) {
-//         console.error("❌ Error en OAuth callback:", error);
-//         res.status(500).send("Error durante OAuth callback");
-//     }
-// });
-
-// app.get("/auth/callback", async (req, res) => {
-//     try {
-//         console.log("🔍 OAuth Callback Params:", req.query);
-
-//         const session = await shopify.auth.callback({
-//             rawRequest: req,
-//             rawResponse: res,
-//         });
-
-//         if (!session) {
-//             console.error("❌ No se recibió sesión en el callback");
-//             return res.status(400).send("No se recibió sesión en el callback");
-//         }
-
-//         console.log("✅ Autenticación completa:", session.shop);
-//         res.send("Autenticación completa ✅");
-//     } catch (error) {
-//         console.error("❌ Error en OAuth callback:", error);
-//         res.status(500).send("Error durante OAuth callback");
-//     }
-// });
-
-
-// app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
-//   const session = await shopify.sessionStorage.loadSession(req.query.shop);
-//   console.log("✅ App instalada correctamente. Token recibido:", session?.accessToken);
-//   res.send("App instalada correctamente. Token recibido ✅");
-// });
+// 👉 Shopify middleware (añade headers y autenticación)
+app.use(shopify.cspHeaders());
+app.use(shopify.ensureInstalledOnShop());
+app.use(express.json());
 
 app.get("/api/test", async (req, res) => {
     try {

@@ -456,20 +456,7 @@
 // // // });
 
 
-// // app.get("/api/products", async (req, res) => {
-// //     try {
-// //         // ✅ Llamamos a authenticate.admin dentro del callback
-// //         const { admin } = await authenticate.admin(req);
-// //         const response = await admin.rest.resources.Product.all({
-// //             session: admin.session,
-// //         });
 
-// //         res.json(response.data);
-// //     } catch (error) {
-// //         console.error("❌ Error en /api/products:", error);
-// //         res.status(500).json({ error: "Error al obtener productos" });
-// //     }
-// // });
 
 // // const PORT = process.env.PORT || 3000;
 // // app.listen(PORT, () => {
@@ -483,20 +470,20 @@ import { execSync } from "child_process";
 import shopify from "./shopify.server.js";
 
 
-console.log("🔍 Shopify exports:", {
-  shopify,
-  authenticate: typeof authenticate,
-  addDocumentResponseHeaders: typeof addDocumentResponseHeaders,
-});
+// console.log("🔍 Shopify exports:", {
+//   shopify,
+//   authenticate: typeof authenticate,
+//   addDocumentResponseHeaders: typeof addDocumentResponseHeaders,
+// });
 
 dotenv.config();
 
 try {
-  console.log("🛠 Generando Prisma Client dinámicamente...");
-  execSync("npx prisma generate", { stdio: "inherit" });
-  console.log("✅ Prisma Client generado");
+    console.log("🛠 Generando Prisma Client dinámicamente...");
+    execSync("npx prisma generate", { stdio: "inherit" });
+    console.log("✅ Prisma Client generado");
 } catch (err) {
-  console.warn("⚠️ No se pudo generar Prisma Client automáticamente:", err.message);
+    console.warn("⚠️ No se pudo generar Prisma Client automáticamente:", err.message);
 }
 
 const app = express();
@@ -510,18 +497,69 @@ app.use(shopify.cspHeaders());
 app.get("/auth", shopify.auth.begin());
 
 // 🧩 Callback de OAuth
-app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
-  const session = await shopify.sessionStorage.loadSession(req.query.shop);
-  console.log("✅ App instalada correctamente. Token recibido:", session?.accessToken);
-  res.send("App instalada correctamente. Token recibido ✅");
+app.get("/auth/callback", async (req, res) => {
+    try {
+        const session = await shopify.auth.callback({
+            rawRequest: req,
+            rawResponse: res,
+        });
+        console.log("✅ Token recibido:", session.accessToken);
+        res.send("App instalada correctamente ✅");
+    } catch (err) {
+        console.error("❌ Error OAuth callback:", err);
+        res.status(500).send("Error al autenticar la tienda.");
+    }
+});
+// app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
+//   const session = await shopify.sessionStorage.loadSession(req.query.shop);
+//   console.log("✅ App instalada correctamente. Token recibido:", session?.accessToken);
+//   res.send("App instalada correctamente. Token recibido ✅");
+// });
+
+app.get("/api/test", async (req, res) => {
+    try {
+        // Verifica la sesión activa con el middleware integrado
+        const sessionValidation = await shopify.validateAuthenticatedSession()(req, res);
+
+        // Si no hay sesión, redirige o responde con error
+        if (!sessionValidation?.session) {
+            return res.status(401).send("No hay sesión activa o es inválida");
+        }
+
+        const session = sessionValidation.session;
+
+        // Creamos cliente REST usando esa sesión
+        const client = new shopify.api.clients.Rest({ session });
+        const response = await client.get({ path: "shop" });
+
+        res.json(response.body.shop);
+    } catch (err) {
+        console.error("❌ Error al llamar a Shopify API:", err);
+        res.status(500).send("Error al conectar con Shopify API");
+    }
+});
+
+app.get("/api/products", async (req, res) => {
+    try {
+        // ✅ Llamamos a authenticate.admin dentro del callback
+        const { admin } = await authenticate.admin(req);
+        const response = await admin.rest.resources.Product.all({
+            session: admin.session,
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error("❌ Error en /api/products:", error);
+        res.status(500).json({ error: "Error al obtener productos" });
+    }
 });
 
 // ✅ Endpoint de prueba
 app.get("/", (req, res) => {
-  res.send("🚀 Shopify Skin Analyzer backend en marcha");
+    res.send("🚀 Shopify Skin Analyzer backend en marcha");
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor Shopify corriendo en puerto ${PORT}`);
+    console.log(`Servidor Shopify corriendo en puerto ${PORT}`);
 });

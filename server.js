@@ -493,17 +493,33 @@ app.use(express.json());
 // app.use(shopify.addDocumentResponseHeaders);
 app.use(shopify.cspHeaders());
 
-// 🧭 Redirección automática de OAuth
+// ==========================
+// 🧩 INICIO OAUTH
+// ==========================
 app.get("/auth", async (req, res) => {
+    const { shop, embedded } = req.query;
+
+    if (!shop) return res.status(400).send("Missing ?shop parameter");
+
+    // Si el flujo se lanza desde el iframe de Shopify → saca al navegador al dominio del merchant
+    if (embedded === "1") {
+        console.log("🔄 Redirigiendo fuera del iframe...");
+        return res.send(`
+      <html>
+        <body>
+          <script type="text/javascript">
+            window.top.location.href = "/auth?shop=${shop}";
+          </script>
+        </body>
+      </html>
+    `);
+    }
+
     try {
-        const { shop } = req.query;
-
-        if (!shop) return res.status(400).send("Missing shop parameter");
-
         console.log("🟢 Iniciando OAuth para tienda:", shop);
 
-        // 👇 Muy importante: return para que Express no continúe ejecutando
-        return await shopify.auth.begin({
+        // Inicia el proceso OAuth
+        await shopify.auth.begin({
             shop,
             callbackPath: "/auth/callback",
             isOnline: false,
@@ -511,44 +527,158 @@ app.get("/auth", async (req, res) => {
             rawResponse: res,
         });
 
+        console.log("✅ shopify.auth.begin() completado");
     } catch (err) {
         console.error("❌ Error iniciando OAuth:", err);
         res.status(500).send("Error iniciando OAuth");
     }
 });
 
-
-
-// 🧩 Callback de OAuth
+// ==========================
+// 🧩 CALLBACK OAUTH
+// ==========================
 app.get("/auth/callback", async (req, res) => {
-    console.log("🔍 OAuth Callback Params:", req.query);
-
     try {
-        const { session } = await shopify.auth.callback({
+        console.log("📥 Recibiendo callback OAuth...");
+        const session = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        if (!session) {
-            console.error("❌ No se recibió sesión en el callback");
-            return res.status(400).send("Error: sesión no recibida.");
+        if (!session || !session.accessToken) {
+            console.error("❌ No se recibió sesión válida en el callback");
+            return res.status(401).send("No se recibió sesión válida de Shopify");
         }
 
-        console.log("✅ Token obtenido:", session.accessToken);
+        console.log("✅ OAuth completado para tienda:", session.shop);
+        console.log("🔑 Token de acceso:", session.accessToken.substring(0, 8) + "...");
 
-        const redirectUrl = await shopify.redirectToShopifyOrAppRoot({
-            req,
-            res,
-            shop: session.shop,
-        });
-
-        return res.redirect(redirectUrl);
-
-    } catch (error) {
-        console.error("❌ Error en OAuth callback:", error);
-        res.status(500).send("Error al autenticar la tienda.");
+        // Redirige al panel del merchant dentro de Shopify
+        const redirectUrl = `https://${session.shop}/admin/apps/skin-analyzer`;
+        console.log("🔁 Redirigiendo al panel de Shopify:", redirectUrl);
+        res.redirect(redirectUrl);
+    } catch (err) {
+        console.error("❌ Error en OAuth callback:", err);
+        res.status(500).send("Error en OAuth callback");
     }
 });
+
+// app.get("/exitiframe", (req, res) => {
+//     const shop = req.query.shop;
+//     const redirectUrl = `/auth?shop=${shop}`;
+//     res.send(`
+//     <html>
+//       <body>
+//         <script type="text/javascript">
+//           window.top.location.href = "${redirectUrl}";
+//         </script>
+//       </body>
+//     </html>
+//   `);
+// });
+
+// 🧭 Redirección automática de OAuth
+// app.get("/auth", async (req, res) => {
+//     try {
+//         const { shop } = req.query;
+
+//         if (!shop) return res.status(400).send("Missing shop parameter");
+
+//         console.log("🟢 Iniciando OAuth para tienda:", shop);
+
+//         // 👇 Muy importante: return para que Express no continúe ejecutando
+//         return await shopify.auth.begin({
+//             shop,
+//             callbackPath: "/auth/callback",
+//             isOnline: false,
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+
+//     } catch (err) {
+//         console.error("❌ Error iniciando OAuth:", err);
+//         res.status(500).send("Error iniciando OAuth");
+//     }
+// });
+
+// app.get("/auth", async (req, res) => {
+//     try {
+//         const { shop } = req.query;
+//         console.log("🟢 Iniciando OAuth para tienda:", shop);
+
+//         if (!shop) {
+//             return res.status(400).send("Falta parámetro ?shop=");
+//         }
+
+//         // Si está dentro de iframe, redirigir fuera
+//         const isEmbedded = req.query.embedded === "1";
+//         if (isEmbedded) {
+//             return res.redirect(`/exitiframe?shop=${shop}`);
+//         }
+
+//         console.log("🔍 Parámetros recibidos:", {
+//             shop: req.query.shop,
+//             fullUrl: req.originalUrl,
+//         });
+
+//         console.log("➡️ Llamando a shopify.auth.begin()...");
+//         await shopify.auth.begin({
+//             shop,
+//             callbackPath: "/auth/callback",
+//             isOnline: false,
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+//         console.log("✅ shopify.auth.begin() terminó");
+
+//     } catch (error) {
+//         console.error("❌ Error iniciando OAuth:", error);
+//         res.status(500).send("Error iniciando OAuth");
+//     }
+// });
+
+
+
+// // 🧩 Callback de OAuth
+// app.get("/auth/callback", async (req, res) => {
+//     try {
+//         const session = await shopify.auth.callback({
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+
+//         console.log("✅ OAuth completo:", session.shop);
+
+//         // Redirige al frontend embebido dentro del admin
+//         res.redirect(`https://${session.shop}/admin/apps/skin-analyzer`);
+//     } catch (error) {
+//         console.error("❌ Error en OAuth callback:", error);
+//         res.status(500).send("Error durante OAuth callback");
+//     }
+// });
+
+// app.get("/auth/callback", async (req, res) => {
+//     try {
+//         console.log("🔍 OAuth Callback Params:", req.query);
+
+//         const session = await shopify.auth.callback({
+//             rawRequest: req,
+//             rawResponse: res,
+//         });
+
+//         if (!session) {
+//             console.error("❌ No se recibió sesión en el callback");
+//             return res.status(400).send("No se recibió sesión en el callback");
+//         }
+
+//         console.log("✅ Autenticación completa:", session.shop);
+//         res.send("Autenticación completa ✅");
+//     } catch (error) {
+//         console.error("❌ Error en OAuth callback:", error);
+//         res.status(500).send("Error durante OAuth callback");
+//     }
+// });
+
 
 // app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
 //   const session = await shopify.sessionStorage.loadSession(req.query.shop);

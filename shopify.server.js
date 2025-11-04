@@ -220,12 +220,12 @@ import prisma from "./db.server.js";
 
 // --- 🔍 DEBUG ENVIRONMENT ---
 console.log("🧠 DEBUG ENVIRONMENT SHOPIFY CONFIG:");
-// console.log({
-//   SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY,
-//   SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET,
-//   SHOPIFY_APP_URL: process.env.SHOPIFY_APP_URL,
-//   SHOPIFY_SCOPES: process.env.SHOPIFY_SCOPES,
-// });
+console.log({
+  SHOPIFY_API_KEY: process.env.SHOPIFY_API_KEY,
+  SHOPIFY_API_SECRET: process.env.SHOPIFY_API_SECRET,
+  SHOPIFY_APP_URL: process.env.SHOPIFY_APP_URL,
+  SHOPIFY_SCOPES: process.env.SHOPIFY_SCOPES,
+});
 
 if (
   !process.env.SHOPIFY_API_KEY ||

@@ -628,14 +628,22 @@ const app = express();
 // ==========================
 // ⚙️ Middlewares base
 // ==========================
+// ✅ Middleware de cookies seguras
 app.set("trust proxy", 1); // importante para Render o proxies HTTPS
 app.use(cookieParser());
-
-// ✅ Habilitar cookies seguras
 app.use((req, res, next) => {
-    res.setHeader("Set-Cookie", "SameSite=None; Secure");
-    next();
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Set-Cookie", "SameSite=None; Secure");
+  next();
 });
+// app.use(cookieParser());
+
+// // ✅ Habilitar cookies seguras
+// app.use((req, res, next) => {
+//     res.setHeader("Set-Cookie", "SameSite=None; Secure");
+//     next();
+// });
 
 app.use(express.json());
 

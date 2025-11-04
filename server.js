@@ -468,6 +468,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { execSync } from "child_process";
 import shopify from "./shopify.server.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
@@ -480,33 +481,29 @@ try {
 }
 
 const app = express();
+app.use(cookieParser());
 
 // ==========================
 // 🧩 INICIO OAUTH
 // ==========================
 app.get("/auth", async (req, res) => {
-    const { shop, embedded } = req.query;
-
-    if (!shop) return res.status(400).send("Missing ?shop parameter");
-
-    // Si el flujo se lanza desde el iframe de Shopify → saca al navegador al dominio del merchant
-    if (embedded === "1") {
-        console.log("🔄 Redirigiendo fuera del iframe...");
-        return res.send(`
-      <html>
-        <body>
-          <script type="text/javascript">
-            window.top.location.href = "/auth?shop=${shop}";
-          </script>
-        </body>
-      </html>
-    `);
-    }
-
     try {
-        console.log("🟢 Iniciando OAuth para tienda:", shop);
+        const { shop, embedded } = req.query;
+        if (!shop) return res.status(400).send("Missing ?shop parameter");
 
-        // Inicia el proceso OAuth
+        if (embedded === "1") {
+            return res.send(`
+        <html>
+          <body>
+            <script type="text/javascript">
+              window.top.location.href = "/auth?shop=${shop}";
+            </script>
+          </body>
+        </html>
+      `);
+        }
+
+        console.log("🟢 Iniciando OAuth para tienda:", shop);
         await shopify.auth.begin({
             shop,
             callbackPath: "/auth/callback",
@@ -514,13 +511,12 @@ app.get("/auth", async (req, res) => {
             rawRequest: req,
             rawResponse: res,
         });
-
-        console.log("✅ shopify.auth.begin() completado");
     } catch (err) {
         console.error("❌ Error iniciando OAuth:", err);
         res.status(500).send("Error iniciando OAuth");
     }
 });
+
 
 // ==========================
 // 🧩 CALLBACK OAUTH

@@ -494,40 +494,58 @@ app.use(express.json());
 app.use(shopify.cspHeaders());
 
 // 🧭 Redirección automática de OAuth
-app.get("/auth", shopify.auth.begin());
-
-// 🧩 Callback de OAuth
-app.get("/auth/callback", async (req, res) => {
+app.get("/auth", async (req, res) => {
     try {
-        console.log("🔍 OAuth Callback Params:", req.query);
+        const { shop } = req.query;
 
-        const { session } = await shopify.auth.callback({
+        if (!shop) return res.status(400).send("Missing shop parameter");
+
+        // ✅ La única forma correcta de iniciar OAuth
+        await shopify.auth.begin({
+            shop,
+            callbackPath: "/auth/callback",
+            isOnline: false,
             rawRequest: req,
             rawResponse: res,
         });
 
-        if (!session) {
-            console.error("❌ No se recibió sesión en el callback");
-            return res.status(400).send("Error: sesión no recibida.");
-        }
-
-        console.log("✅ App instalada correctamente. Token:", session.accessToken);
-        console.log("🛍️ Tienda autenticada:", session.shop);
-
-        const redirectUrl = await shopify.redirectToShopifyOrAppRoot({
-            req,
-            res,
-            shop: session.shop,
-        });
-
-        return res.redirect(redirectUrl);
-    } catch (error) {
-        console.error("❌ Error en OAuth callback:", error);
-        res.status(500).send("Error al autenticar la tienda.");
+    } catch (err) {
+        console.error("❌ Error iniciando OAuth:", err);
+        res.status(500).send("Error iniciando OAuth");
     }
 });
 
 
+// 🧩 Callback de OAuth
+app.get("/auth/callback", async (req, res) => {
+  console.log("🔍 OAuth Callback Params:", req.query);
+
+  try {
+    const { session } = await shopify.auth.callback({
+      rawRequest: req,
+      rawResponse: res,
+    });
+
+    if (!session) {
+      console.error("❌ No se recibió sesión en el callback");
+      return res.status(400).send("Error: sesión no recibida.");
+    }
+
+    console.log("✅ Token obtenido:", session.accessToken);
+
+    const redirectUrl = await shopify.redirectToShopifyOrAppRoot({
+      req,
+      res,
+      shop: session.shop,
+    });
+
+    return res.redirect(redirectUrl);
+
+  } catch (error) {
+    console.error("❌ Error en OAuth callback:", error);
+    res.status(500).send("Error al autenticar la tienda.");
+  }
+});
 
 // app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
 //   const session = await shopify.sessionStorage.loadSession(req.query.shop);

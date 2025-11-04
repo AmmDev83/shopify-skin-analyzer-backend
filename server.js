@@ -499,14 +499,21 @@ app.get("/auth", shopify.auth.begin());
 // 🧩 Callback de OAuth
 app.get("/auth/callback", async (req, res) => {
     try {
+        console.log("🔍 OAuth Callback Params:", req.query);
+
         const { session } = await shopify.auth.callback({
             rawRequest: req,
             rawResponse: res,
         });
 
-        console.log("✅ App instalada correctamente. Token:", session.accessToken);
+        if (!session) {
+            console.error("❌ No se recibió sesión en el callback");
+            return res.status(400).send("Error: sesión no recibida.");
+        }
 
-        // Redirige de vuelta al panel de Shopify
+        console.log("✅ App instalada correctamente. Token:", session.accessToken);
+        console.log("🛍️ Tienda autenticada:", session.shop);
+
         const redirectUrl = await shopify.redirectToShopifyOrAppRoot({
             req,
             res,
@@ -516,9 +523,10 @@ app.get("/auth/callback", async (req, res) => {
         return res.redirect(redirectUrl);
     } catch (error) {
         console.error("❌ Error en OAuth callback:", error);
-        res.status(500).send("Error al autenticar la tienda");
+        res.status(500).send("Error al autenticar la tienda.");
     }
 });
+
 
 
 // app.get("/auth/callback", shopify.auth.callback(), async (req, res) => {
